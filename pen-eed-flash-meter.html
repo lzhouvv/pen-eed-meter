@@ -13,14 +13,19 @@
     header { display:flex; justify-content:space-between; align-items:flex-start; margin:0 2px 16px; }
     h1 { font-size:18px; margin:0; letter-spacing:.08em; font-weight:700; } .subtitle { margin:5px 0 0; color:var(--muted); font-size:12px; letter-spacing:.04em; }
     .badge { color:#11120f; background:var(--accent); font-size:11px; font-weight:800; padding:6px 8px; letter-spacing:.06em; }
-    .viewfinder { position:relative; overflow:hidden; background:#272822; aspect-ratio:3/4; border:1px solid var(--line); }
-    video { display:block; width:100%; height:100%; object-fit:cover; background:linear-gradient(135deg,#303129,#171813); }
+    .viewfinder { position:relative; overflow:hidden; background:#272822; aspect-ratio:1/1; border:1px solid var(--line); }
+    video,#freezeFrame { display:block; width:100%; height:100%; object-fit:cover; background:linear-gradient(135deg,#303129,#171813); }
+    #freezeFrame { display:none; position:absolute; inset:0; }
     .shade { position:absolute; inset:0; pointer-events:none; background:linear-gradient(to bottom,rgba(0,0,0,.42),transparent 25%,transparent 76%,rgba(0,0,0,.44)); }
     .center-gate { position:absolute; left:50%; top:50%; width:38%; aspect-ratio:1; transform:translate(-50%,-50%); border:1px solid rgba(215,255,79,.86); box-shadow:0 0 0 100vmax rgba(0,0,0,.16); }
     .center-gate:before,.center-gate:after { content:""; position:absolute; background:var(--accent); } .center-gate:before { width:12px;height:1px;left:calc(50% - 6px);top:calc(50% - .5px) }.center-gate:after { height:12px;width:1px;top:calc(50% - 6px);left:calc(50% - .5px) }
     .meter { position:absolute; top:13px; left:13px; right:13px; display:flex; justify-content:space-between; font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.06em; }
     .meter strong { color:var(--accent); } .camera-message { position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:32px; color:var(--muted); font-size:14px; line-height:1.55; }
     .camera-message.hidden { display:none; }
+    .freeze-label { display:none; position:absolute; left:50%; top:50%; min-width:170px; transform:translate(-50%,-50%); padding:11px 14px; color:#12130e; text-align:center; background:var(--accent); font:800 14px ui-monospace,SFMono-Regular,Menlo,monospace; line-height:1.45; }
+    .freeze-label small { display:block; font:600 10px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif; letter-spacing:.04em; }
+    .viewfinder.live { cursor:pointer; } .viewfinder.live:after { content:'点击取景框冻结测距'; position:absolute; bottom:12px; left:50%; transform:translateX(-50%); white-space:nowrap; color:#fff; font-size:11px; background:rgba(0,0,0,.52); padding:5px 7px; }
+    .viewfinder.frozen:after { content:'点击继续取景'; position:absolute; bottom:12px; left:50%; transform:translateX(-50%); white-space:nowrap; color:#12130e; font-size:11px; font-weight:800; background:var(--accent); padding:5px 7px; }
     .result { background:var(--accent); color:#13140e; padding:17px 18px 15px; margin:14px 0; display:grid; grid-template-columns:1fr auto; align-items:end; }
     .result small { font-size:11px; font-weight:800; letter-spacing:.1em; } .result .power { font-size:42px; font-weight:850; letter-spacing:-.05em; line-height:1; } .result .guide { font-size:12px; text-align:right; line-height:1.5; font-weight:650; }
     .notice { padding:11px 13px; border-left:2px solid var(--warning); color:#e7d8b9; background:rgba(255,200,107,.07); font-size:12px; line-height:1.55; margin-bottom:14px; }
@@ -29,7 +34,9 @@
     .control { margin:0 0 16px; } .control:last-child { margin:0; } .control label { display:flex; justify-content:space-between; align-items:center; font-size:14px; margin-bottom:9px; } output { color:var(--accent); font:700 16px ui-monospace,SFMono-Regular,Menlo,monospace; }
     input[type=range] { appearance:none; width:100%; height:3px; background:linear-gradient(90deg,var(--accent) var(--fill,50%),#555 0); outline:0; } input[type=range]::-webkit-slider-thumb { appearance:none; width:19px; height:19px; border-radius:50%; background:var(--ink); border:3px solid var(--accent); }
     .segmented { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; } .segmented button,.camera-btn { border:1px solid var(--line); color:var(--ink); background:transparent; min-height:39px; font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace; } .segmented button.active { background:var(--ink); color:#171813; border-color:var(--ink); }
-    .camera-btn { width:100%; color:#11120f; background:var(--accent); border:0; margin-top:10px; letter-spacing:.06em; }
+    .camera-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; } .camera-actions .camera-btn { margin:0; }
+    .camera-btn { width:100%; color:#11120f; background:var(--accent); border:0; letter-spacing:.06em; }
+    .camera-btn.secondary { color:var(--ink); background:#31332b; border:1px solid var(--line); } .camera-btn:disabled { opacity:.48; }
     .readout { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); margin-top:10px; } .readout div { padding:11px 12px; background:#191a16; } .readout span { display:block; color:var(--muted); font-size:10px; font-weight:700; letter-spacing:.08em; } .readout strong { font:700 18px ui-monospace,SFMono-Regular,Menlo,monospace; display:block; margin-top:4px; }
     footer { color:#777970; font-size:11px; line-height:1.55; margin:15px 2px 0; }
   </style>
@@ -37,14 +44,15 @@
 <body>
   <main>
     <header><div><h1>PEN EED / FLASH METER</h1><p class="subtitle">移动端闪光曝光辅助工具</p></div><span class="badge" id="camState">CAM OFF</span></header>
-    <section class="viewfinder" aria-label="摄像头取景画面">
-      <video id="video" autoplay muted playsinline></video><div class="shade"></div><div class="center-gate" aria-hidden="true"></div>
+    <section class="viewfinder" id="viewfinder" aria-label="摄像头取景画面">
+      <video id="video" autoplay muted playsinline></video><canvas id="freezeFrame"></canvas><div class="shade"></div><div class="center-gate" aria-hidden="true"></div>
       <div class="meter"><span id="lightText">EV —</span><strong id="rangeText">RANGE —</strong></div>
-      <div class="camera-message" id="cameraMessage">开启摄像头后，将主体放入中央取景框。<br>支持的浏览器会尝试以中央人脸估算距离。</div>
+      <div class="camera-message" id="cameraMessage">开启摄像头后，将要测量的物体放入中央取景框。<br>深度模式会读取该中心点到手机的距离。</div>
+      <div class="freeze-label" id="freezeLabel"></div>
     </section>
-    <button class="camera-btn" id="cameraBtn" type="button">开启摄像头</button>
+    <div class="camera-actions"><button class="camera-btn" id="cameraBtn" type="button">开启摄像头</button><button class="camera-btn secondary" id="depthBtn" type="button">尝试 LiDAR 测距</button></div>
     <section class="result"><div><small>建议闪光输出</small><div class="power" id="power">—</div></div><div class="guide" id="guide">输入距离后计算<br>全功率仍不足时会提示</div></section>
-    <div class="notice" id="rangeNotice">测距待命：请在下方输入主体距离。网页没有通用的真实测距权限；若浏览器提供 FaceDetector，会用画面中央人脸作粗略估算，建议以实测距离校正。</div>
+    <div class="notice" id="rangeNotice">测距待命：将物体对准中央十字。点击“尝试 LiDAR 测距”可读取支持设备的中央深度；无深度数据时，请在下方输入实测距离。</div>
     <section class="panel"><div class="panel-title"><span>闪光参数</span><span>GN 以 ISO 100 / 米计</span></div>
       <div class="control"><label for="iso">ISO <output id="isoOut">100</output></label><input id="iso" type="range" min="50" max="1600" step="50" value="100"></div>
       <div class="control"><label for="gn">闪光灯 GN <output id="gnOut">14</output></label><input id="gn" type="range" min="4" max="60" step="1" value="14"></div>
@@ -59,7 +67,7 @@
   <script>
     const $ = id => document.getElementById(id);
     const ui = { iso:$('iso'), gn:$('gn'), aperture:$('aperture'), distance:$('distance') };
-    let stream, faceTimer, lastFaceDistance;
+    let stream, frozen=false, xrSession;
     function update() {
       const iso=+ui.iso.value, gn=+ui.gn.value, f=+ui.aperture.value, d=+ui.distance.value;
       const required=d*f/Math.sqrt(iso/100), ratio=Math.pow(required/gn,2);
@@ -71,17 +79,36 @@
       $('guide').innerHTML=match ? `需全功率的 ${(ratio*100).toFixed(0)}%<br>选 ${match[0]} 档留余量` : `所需 GN ${required.toFixed(1)}<br>请靠近或开大光圈`;
       const pct=(d-.3)/(12-.3)*100; ui.distance.style.setProperty('--fill',pct+'%');
     }
-    Object.values(ui).forEach(el=>el.addEventListener('input',()=>{ if(el===ui.distance){ $('distanceMode').textContent='手动输入'; lastFaceDistance=null; } update(); })); update();
+    Object.values(ui).forEach(el=>el.addEventListener('input',()=>{ if(el===ui.distance) $('distanceMode').textContent='手动输入'; update(); })); update();
     function luminance(canvas) { const c=canvas.getContext('2d',{willReadFrequently:true}), w=32,h=32; canvas.width=w; canvas.height=h; c.drawImage($('video'),0,0,w,h); const data=c.getImageData(0,0,w,h).data; let sum=0; for(let i=0;i<data.length;i+=4) sum+=.2126*data[i]+.7152*data[i+1]+.0722*data[i+2]; return sum/(w*h); }
     function updateLight() { if(!$('video').videoWidth) return; const y=luminance(document.createElement('canvas')); const ev=Math.max(-2,Math.min(14,Math.log2(Math.max(y,1)/5))); $('lightText').textContent='SCENE EV '+ev.toFixed(1); }
-    async function detectFace() {
-      if(!stream || !('FaceDetector' in window) || !$('video').videoWidth) return;
-      try { const detector=new FaceDetector({fastMode:true,maxDetectedFaces:3}); const faces=await detector.detect($('video')); const v=$('video'), cx=v.videoWidth/2,cy=v.videoHeight/2; let chosen, score=Infinity;
-        faces.forEach(face=>{ const b=face.boundingBox, dx=b.x+b.width/2-cx,dy=b.y+b.height/2-cy,s=Math.hypot(dx,dy); if(s<score){score=s;chosen=b;} });
-        if(chosen && score < Math.min(v.videoWidth,v.videoHeight)*.23) { const assumedHFov=60*Math.PI/180, focalPx=v.videoWidth/(2*Math.tan(assumedHFov/2)); const meters=.16*focalPx/chosen.width; if(meters>=.3&&meters<=12){ lastFaceDistance=meters; ui.distance.value=meters.toFixed(1); $('distanceMode').textContent='中央人脸估算'; $('rangeText').textContent='RANGE ~'+meters.toFixed(1)+'m'; $('rangeNotice').textContent='中央人脸估算中：按约 16cm 脸宽、60°水平视角推算，仅供参考。移动相机或实际脸宽会造成误差，请以实测距离为准。'; update(); } }
-      } catch(e) { /* browser feature is optional */ }
+    async function toggleFreeze() {
+      if(!stream) return;
+      const video=$('video'), canvas=$('freezeFrame'), finder=$('viewfinder'), label=$('freezeLabel');
+      if(!frozen) { const ctx=canvas.getContext('2d'); canvas.width=video.videoWidth; canvas.height=video.videoHeight; ctx.drawImage(video,0,0,canvas.width,canvas.height); frozen=true; video.pause(); canvas.style.display='block'; finder.classList.remove('live'); finder.classList.add('frozen');
+        if(xrSession) { label.innerHTML='深度测距进行中<small>画面中心物体 → 手机</small>'; }
+        else { $('rangeText').textContent='RANGE —'; label.innerHTML='画面已冻结<small>中央物体测距需启用 LiDAR / 深度模式</small>'; $('rangeNotice').textContent='普通摄像头无法可靠测量任意物体距离。请点击“尝试 LiDAR 测距”，或按实测距离调整下方滑杆。'; }
+        label.style.display='block';
+      } else { frozen=false; canvas.style.display='none'; label.style.display='none'; finder.classList.remove('frozen'); finder.classList.add('live'); await video.play(); }
     }
-    $('cameraBtn').addEventListener('click',async()=>{ try { stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:1280}},audio:false}); $('video').srcObject=stream; $('cameraMessage').classList.add('hidden'); $('cameraBtn').textContent='摄像头已开启'; $('cameraBtn').disabled=true; $('camState').textContent='CAM LIVE'; setInterval(updateLight,1000); if('FaceDetector' in window) faceTimer=setInterval(detectFace,1300); else $('rangeNotice').textContent='当前浏览器不支持 FaceDetector 自动估距。请使用下方滑杆输入实测主体距离。'; } catch(err) { $('cameraMessage').textContent='无法开启摄像头。请允许浏览器的相机权限，并通过 HTTPS 或 localhost 打开此页面。'; $('rangeNotice').textContent='未取得相机权限，仍可使用手动距离计算闪光输出。'; } });
+    async function startDepthSensing() {
+      const btn=$('depthBtn');
+      if(!navigator.xr) { $('rangeNotice').textContent='此浏览器未提供 WebXR 深度感测接口，无法从网页调用 LiDAR。请使用手动距离。'; return; }
+      btn.textContent='正在检测深度…'; btn.disabled=true;
+      try {
+        const supported=await navigator.xr.isSessionSupported('immersive-ar');
+        if(!supported) throw new Error('AR_UNSUPPORTED');
+        xrSession=await navigator.xr.requestSession('immersive-ar',{requiredFeatures:['local','depth-sensing'],optionalFeatures:['dom-overlay'],domOverlay:{root:document.body},depthSensing:{usagePreference:['cpu-optimized'],formatPreference:['float32','luminance-alpha']}});
+        const ref=await xrSession.requestReferenceSpace('local');
+        $('camState').textContent='DEPTH LIVE'; $('rangeNotice').textContent='深度感测已请求：请让手机正对主体中央，正在读取中央像素的米制深度。点击系统的退出 AR 后可恢复普通取景。'; btn.textContent='LiDAR 测距中';
+        const onFrame=(time,frame)=>{ if(!xrSession) return; xrSession.requestAnimationFrame(onFrame); try { const pose=frame.getViewerPose(ref); if(!pose) return; const depth=frame.getDepthInformation(pose.views[0]); if(!depth || !depth.getDepthInMeters) return; const meters=depth.getDepthInMeters(Math.floor(depth.width/2),Math.floor(depth.height/2)); if(Number.isFinite(meters) && meters>.1 && meters<50) { ui.distance.value=Math.min(12,Math.max(.3,meters)).toFixed(1); $('distanceMode').textContent='深度感测 · 画面中央'; $('rangeText').textContent='DEPTH '+meters.toFixed(2)+'m'; $('freezeLabel').innerHTML=meters.toFixed(2)+' m<small>WebXR 深度 · 画面中央 → 手机</small>'; $('freezeLabel').style.display='block'; update(); } } catch(e) { /* unsupported depth frame is handled on session end */ } };
+        xrSession.addEventListener('end',()=>{xrSession=null; $('camState').textContent=stream?'CAM LIVE':'CAM OFF'; $('freezeLabel').style.display='none'; btn.disabled=false; btn.textContent='尝试 LiDAR 测距';});
+        xrSession.requestAnimationFrame(onFrame);
+      } catch(err) { const noDepth=err.name==='NotSupportedError'||err.message==='AR_UNSUPPORTED'; $('rangeNotice').textContent=noDepth?'此设备或浏览器不支持 WebXR 的 depth-sensing，因此网页无法调用 LiDAR 数据。':'未能启动深度测距：请确认通过 GitHub Pages 的 HTTPS 地址打开，并允许 AR / 相机权限。'; btn.disabled=false; btn.textContent='尝试 LiDAR 测距'; }
+    }
+    $('cameraBtn').addEventListener('click',async()=>{ try { stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:1280}},audio:false}); $('video').srcObject=stream; $('cameraMessage').classList.add('hidden'); $('cameraBtn').textContent='摄像头已开启 · 点击画面冻结'; $('cameraBtn').disabled=true; $('camState').textContent='CAM LIVE'; $('viewfinder').classList.add('live'); setInterval(updateLight,1000); } catch(err) { $('cameraMessage').textContent='无法开启摄像头。请允许浏览器的相机权限，并通过 HTTPS 或 localhost 打开此页面。'; $('rangeNotice').textContent='未取得相机权限，仍可使用手动距离计算闪光输出。'; } });
+    $('viewfinder').addEventListener('click',toggleFreeze);
+    $('depthBtn').addEventListener('click',startDepthSensing);
   </script>
 </body>
 </html>
