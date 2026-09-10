@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#11120f">
+  <title>PEN EED · 闪光测距表</title>
+  <style>
+    :root { color-scheme: dark; --ink:#f4f0e5; --muted:#a9aaa1; --line:rgba(244,240,229,.18); --panel:#1c1d19; --accent:#d7ff4f; --warning:#ffc86b; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; background:#11120f; color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",sans-serif; }
+    main { max-width:600px; margin:auto; min-height:100dvh; padding:calc(env(safe-area-inset-top) + 17px) 16px calc(env(safe-area-inset-bottom) + 24px); }
+    header { display:flex; justify-content:space-between; align-items:flex-start; margin:0 2px 16px; }
+    h1 { font-size:18px; margin:0; letter-spacing:.08em; font-weight:700; } .subtitle { margin:5px 0 0; color:var(--muted); font-size:12px; letter-spacing:.04em; }
+    .badge { color:#11120f; background:var(--accent); font-size:11px; font-weight:800; padding:6px 8px; letter-spacing:.06em; }
+    .viewfinder { position:relative; overflow:hidden; background:#272822; aspect-ratio:3/4; border:1px solid var(--line); }
+    video { display:block; width:100%; height:100%; object-fit:cover; background:linear-gradient(135deg,#303129,#171813); }
+    .shade { position:absolute; inset:0; pointer-events:none; background:linear-gradient(to bottom,rgba(0,0,0,.42),transparent 25%,transparent 76%,rgba(0,0,0,.44)); }
+    .center-gate { position:absolute; left:50%; top:50%; width:38%; aspect-ratio:1; transform:translate(-50%,-50%); border:1px solid rgba(215,255,79,.86); box-shadow:0 0 0 100vmax rgba(0,0,0,.16); }
+    .center-gate:before,.center-gate:after { content:""; position:absolute; background:var(--accent); } .center-gate:before { width:12px;height:1px;left:calc(50% - 6px);top:calc(50% - .5px) }.center-gate:after { height:12px;width:1px;top:calc(50% - 6px);left:calc(50% - .5px) }
+    .meter { position:absolute; top:13px; left:13px; right:13px; display:flex; justify-content:space-between; font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.06em; }
+    .meter strong { color:var(--accent); } .camera-message { position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:32px; color:var(--muted); font-size:14px; line-height:1.55; }
+    .camera-message.hidden { display:none; }
+    .result { background:var(--accent); color:#13140e; padding:17px 18px 15px; margin:14px 0; display:grid; grid-template-columns:1fr auto; align-items:end; }
+    .result small { font-size:11px; font-weight:800; letter-spacing:.1em; } .result .power { font-size:42px; font-weight:850; letter-spacing:-.05em; line-height:1; } .result .guide { font-size:12px; text-align:right; line-height:1.5; font-weight:650; }
+    .notice { padding:11px 13px; border-left:2px solid var(--warning); color:#e7d8b9; background:rgba(255,200,107,.07); font-size:12px; line-height:1.55; margin-bottom:14px; }
+    .panel { background:var(--panel); border:1px solid var(--line); padding:15px; margin-top:10px; }
+    .panel-title { color:var(--muted); display:flex; justify-content:space-between; font-size:11px; font-weight:700; letter-spacing:.1em; margin-bottom:13px; }
+    .control { margin:0 0 16px; } .control:last-child { margin:0; } .control label { display:flex; justify-content:space-between; align-items:center; font-size:14px; margin-bottom:9px; } output { color:var(--accent); font:700 16px ui-monospace,SFMono-Regular,Menlo,monospace; }
+    input[type=range] { appearance:none; width:100%; height:3px; background:linear-gradient(90deg,var(--accent) var(--fill,50%),#555 0); outline:0; } input[type=range]::-webkit-slider-thumb { appearance:none; width:19px; height:19px; border-radius:50%; background:var(--ink); border:3px solid var(--accent); }
+    .segmented { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; } .segmented button,.camera-btn { border:1px solid var(--line); color:var(--ink); background:transparent; min-height:39px; font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace; } .segmented button.active { background:var(--ink); color:#171813; border-color:var(--ink); }
+    .camera-btn { width:100%; color:#11120f; background:var(--accent); border:0; margin-top:10px; letter-spacing:.06em; }
+    .readout { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); margin-top:10px; } .readout div { padding:11px 12px; background:#191a16; } .readout span { display:block; color:var(--muted); font-size:10px; font-weight:700; letter-spacing:.08em; } .readout strong { font:700 18px ui-monospace,SFMono-Regular,Menlo,monospace; display:block; margin-top:4px; }
+    footer { color:#777970; font-size:11px; line-height:1.55; margin:15px 2px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <header><div><h1>PEN EED / FLASH METER</h1><p class="subtitle">移动端闪光曝光辅助工具</p></div><span class="badge" id="camState">CAM OFF</span></header>
+    <section class="viewfinder" aria-label="摄像头取景画面">
+      <video id="video" autoplay muted playsinline></video><div class="shade"></div><div class="center-gate" aria-hidden="true"></div>
+      <div class="meter"><span id="lightText">EV —</span><strong id="rangeText">RANGE —</strong></div>
+      <div class="camera-message" id="cameraMessage">开启摄像头后，将主体放入中央取景框。<br>支持的浏览器会尝试以中央人脸估算距离。</div>
+    </section>
+    <button class="camera-btn" id="cameraBtn" type="button">开启摄像头</button>
+    <section class="result"><div><small>建议闪光输出</small><div class="power" id="power">—</div></div><div class="guide" id="guide">输入距离后计算<br>全功率仍不足时会提示</div></section>
+    <div class="notice" id="rangeNotice">测距待命：请在下方输入主体距离。网页没有通用的真实测距权限；若浏览器提供 FaceDetector，会用画面中央人脸作粗略估算，建议以实测距离校正。</div>
+    <section class="panel"><div class="panel-title"><span>闪光参数</span><span>GN 以 ISO 100 / 米计</span></div>
+      <div class="control"><label for="iso">ISO <output id="isoOut">100</output></label><input id="iso" type="range" min="50" max="1600" step="50" value="100"></div>
+      <div class="control"><label for="gn">闪光灯 GN <output id="gnOut">14</output></label><input id="gn" type="range" min="4" max="60" step="1" value="14"></div>
+      <div class="control"><label for="aperture">光圈 <output id="apertureOut">f/2.8</output></label><input id="aperture" type="range" min="1.4" max="16" step="0.1" value="2.8"></div>
+    </section>
+    <section class="panel"><div class="panel-title"><span>主体距离</span><span id="distanceMode">手动输入</span></div>
+      <div class="control"><label for="distance">距离（米） <output id="distanceOut">2.0 m</output></label><input id="distance" type="range" min="0.3" max="12" step="0.1" value="2" style="--fill:15%"></div>
+      <div class="readout"><div><span>所需 GN（ISO 100）</span><strong id="requiredGn">5.6</strong></div><div><span>有效距离（全功率）</span><strong id="maxDistance">5.0 m</strong></div></div>
+    </section>
+    <footer>计算：所需 GN = 距离 × 光圈 ÷ √(ISO/100)。输出档位为最接近且不低于所需能量的 1/8、1/4、1/2 或 1。环境亮度仅作取景参考；闪光曝光由 GN 与距离决定。</footer>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    const ui = { iso:$('iso'), gn:$('gn'), aperture:$('aperture'), distance:$('distance') };
+    let stream, faceTimer, lastFaceDistance;
+    function update() {
+      const iso=+ui.iso.value, gn=+ui.gn.value, f=+ui.aperture.value, d=+ui.distance.value;
+      const required=d*f/Math.sqrt(iso/100), ratio=Math.pow(required/gn,2);
+      const stops=[['1/8',.125],['1/4',.25],['1/2',.5],['1',1]];
+      const match=stops.find(x=>ratio<=x[1]);
+      $('isoOut').value=iso; $('gnOut').value=gn; $('apertureOut').value='f/'+f.toFixed(1); $('distanceOut').value=d.toFixed(1)+' m';
+      $('requiredGn').textContent=required.toFixed(1); $('maxDistance').textContent=(gn*Math.sqrt(iso/100)/f).toFixed(1)+' m';
+      $('power').textContent=match ? match[0] : '不足';
+      $('guide').innerHTML=match ? `需全功率的 ${(ratio*100).toFixed(0)}%<br>选 ${match[0]} 档留余量` : `所需 GN ${required.toFixed(1)}<br>请靠近或开大光圈`;
+      const pct=(d-.3)/(12-.3)*100; ui.distance.style.setProperty('--fill',pct+'%');
+    }
+    Object.values(ui).forEach(el=>el.addEventListener('input',()=>{ if(el===ui.distance){ $('distanceMode').textContent='手动输入'; lastFaceDistance=null; } update(); })); update();
+    function luminance(canvas) { const c=canvas.getContext('2d',{willReadFrequently:true}), w=32,h=32; canvas.width=w; canvas.height=h; c.drawImage($('video'),0,0,w,h); const data=c.getImageData(0,0,w,h).data; let sum=0; for(let i=0;i<data.length;i+=4) sum+=.2126*data[i]+.7152*data[i+1]+.0722*data[i+2]; return sum/(w*h); }
+    function updateLight() { if(!$('video').videoWidth) return; const y=luminance(document.createElement('canvas')); const ev=Math.max(-2,Math.min(14,Math.log2(Math.max(y,1)/5))); $('lightText').textContent='SCENE EV '+ev.toFixed(1); }
+    async function detectFace() {
+      if(!stream || !('FaceDetector' in window) || !$('video').videoWidth) return;
+      try { const detector=new FaceDetector({fastMode:true,maxDetectedFaces:3}); const faces=await detector.detect($('video')); const v=$('video'), cx=v.videoWidth/2,cy=v.videoHeight/2; let chosen, score=Infinity;
+        faces.forEach(face=>{ const b=face.boundingBox, dx=b.x+b.width/2-cx,dy=b.y+b.height/2-cy,s=Math.hypot(dx,dy); if(s<score){score=s;chosen=b;} });
+        if(chosen && score < Math.min(v.videoWidth,v.videoHeight)*.23) { const assumedHFov=60*Math.PI/180, focalPx=v.videoWidth/(2*Math.tan(assumedHFov/2)); const meters=.16*focalPx/chosen.width; if(meters>=.3&&meters<=12){ lastFaceDistance=meters; ui.distance.value=meters.toFixed(1); $('distanceMode').textContent='中央人脸估算'; $('rangeText').textContent='RANGE ~'+meters.toFixed(1)+'m'; $('rangeNotice').textContent='中央人脸估算中：按约 16cm 脸宽、60°水平视角推算，仅供参考。移动相机或实际脸宽会造成误差，请以实测距离为准。'; update(); } }
+      } catch(e) { /* browser feature is optional */ }
+    }
+    $('cameraBtn').addEventListener('click',async()=>{ try { stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:1280}},audio:false}); $('video').srcObject=stream; $('cameraMessage').classList.add('hidden'); $('cameraBtn').textContent='摄像头已开启'; $('cameraBtn').disabled=true; $('camState').textContent='CAM LIVE'; setInterval(updateLight,1000); if('FaceDetector' in window) faceTimer=setInterval(detectFace,1300); else $('rangeNotice').textContent='当前浏览器不支持 FaceDetector 自动估距。请使用下方滑杆输入实测主体距离。'; } catch(err) { $('cameraMessage').textContent='无法开启摄像头。请允许浏览器的相机权限，并通过 HTTPS 或 localhost 打开此页面。'; $('rangeNotice').textContent='未取得相机权限，仍可使用手动距离计算闪光输出。'; } });
+  </script>
+</body>
+</html>
